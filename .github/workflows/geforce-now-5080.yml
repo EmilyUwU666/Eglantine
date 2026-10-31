@@ -20,6 +20,16 @@ jobs:
         with:
           arch: x64
       - uses: lukka/get-cmake@latest
+      - name: Install Vulkan shader compiler
+        shell: pwsh
+        run: |
+          choco install vulkan-sdk --yes --no-progress
+          $sdk = Get-ChildItem 'C:\VulkanSDK' -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
+          if (!$sdk) { throw 'Vulkan SDK installation not found in C:\VulkanSDK' }
+          $bin = Join-Path $sdk.FullName 'Bin'
+          if (!(Test-Path (Join-Path $bin 'glslangValidator.exe'))) { throw 'glslangValidator.exe missing from Vulkan SDK' }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "VULKAN_SDK=$($sdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Configure Release
         shell: pwsh
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DYUZU_TESTS=OFF -DENABLE_DEBUG_TOOLS=OFF -DENABLE_WERROR=OFF
