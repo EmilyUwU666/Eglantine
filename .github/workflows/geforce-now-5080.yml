@@ -10,7 +10,7 @@ on:
       - 'CMakeLists.txt'
 jobs:
   windows:
-    runs-on: windows-2022
+    runs-on: windows-2025
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +30,15 @@ jobs:
           if (!(Test-Path (Join-Path $bin 'glslangValidator.exe'))) { throw 'glslangValidator.exe missing from Vulkan SDK' }
           $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           "VULKAN_SDK=$($sdk.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Verify MSVC runtime and linker
+        shell: pwsh
+        run: |
+          where.exe cl
+          where.exe link
+          cl 2>&1 | Select-Object -First 3
+          $lib = Join-Path $env:VCToolsInstallDir 'lib\x64\msvcprt.lib'
+          if (!(Test-Path $lib)) { throw "MSVC C++ runtime library not found: $lib" }
+          Write-Host "MSVC runtime: $lib"
       - name: Configure Release
         shell: pwsh
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DYUZU_TESTS=OFF -DENABLE_DEBUG_TOOLS=OFF -DENABLE_WERROR=OFF
