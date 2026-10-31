@@ -1,0 +1,44 @@
+name: GeForce NOW RTX 5080 Windows portable
+on:
+  workflow_dispatch:
+  push:
+    branches: [geforce-now-5080]
+    paths:
+      - '.github/workflows/geforce-now-5080.yml'
+      - 'tools/geforce-now/**'
+      - 'src/**'
+      - 'CMakeLists.txt'
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - uses: lukka/get-cmake@latest
+      - name: Configure Release
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DYUZU_TESTS=OFF -DENABLE_DEBUG_TOOLS=OFF -DENABLE_WERROR=OFF
+      - name: Compile
+        shell: pwsh
+        run: cmake --build build --parallel 4
+      - name: Package portable build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (!(Test-Path build/bin/eglantine.exe)) { throw 'Expected build/bin/eglantine.exe was not produced' }
+          New-Item -ItemType Directory -Force package | Out-Null
+          Copy-Item build/bin/* package/ -Recurse -Force
+          Copy-Item tools/geforce-now/Launch-5080.cmd package/
+          Copy-Item tools/geforce-now/README.md package/GEFORCE-NOW-README.md
+          New-Item -ItemType Directory -Force package/user | Out-Null
+          Compress-Archive -Path package/* -DestinationPath Eglantine-RTX5080-Portable.zip -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Eglantine-RTX5080-Portable
+          path: Eglantine-RTX5080-Portable.zip
+          if-no-files-found: error
